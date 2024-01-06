@@ -1,0 +1,233 @@
+package handlers
+
+import (
+	configuration "salarykart/config"
+	"salarykart/integrations"
+	"salarykart/models"
+	"salarykart/schema"
+	"net/http"
+	"strconv"
+	"sync"
+
+	"github.com/gin-gonic/gin"
+)
+
+// UploadDocuments godoc
+// @Summary Upload Docs
+// @Schemes
+// @Description Upload Docs to S3 Bucket
+// @Tags Docs
+// @Accept json
+// @Produce json
+// @Param body body schema.Request true "Request"
+// @Success 200 {string} string "ok"
+// @Router /docs-upload [post]
+func (app *App) UploadDocuments(c *gin.Context) {
+	baseDir := configuration.GlobalConfig.Local.TempDocPath
+	var notUploadedMutex sync.Mutex
+
+	var Response struct {
+		Status      int
+		Message     string
+		NotUploaded map[string]interface{}
+	}
+
+	Response.NotUploaded = make(map[string]interface{})
+
+	var wg sync.WaitGroup
+
+	var request schema.Request
+
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"Status":  0,
+			"Message": "Error binding the request: " + err.Error(),
+		})
+		return
+	}
+	// Define a function to handle document upload
+	uploadDocument := func(objectNameInBucket, panCard, leadID string) {
+		defer wg.Done()
+		err := integrations.UploadDocument(baseDir+objectNameInBucket, objectNameInBucket, "/"+panCard+"/"+leadID+"/")
+		if err != nil {
+			notUploadedMutex.Lock()
+			Response.NotUploaded[leadID] = err.Error()
+			notUploadedMutex.Unlock()
+		}
+	}
+
+	// Switch based on DocumentType
+	switch request.DocumentType {
+	case 1: // Normal documents by PanCard
+		mDocs, err := models.GetAllDocsByPancard(app.Conn, request.PanCard)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB",
+			})
+			return
+		}
+
+		for _, doc := range mDocs {
+			wg.Add(1)
+			go uploadDocument(doc.File, doc.Pancard, strconv.FormatUint(doc.LeadID, 10))
+		}
+		Response.Status = 1
+	case 2: // Normal documents by DocId
+		mDocs, err := models.GetDocsByDocId(app.Conn, request.DocId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB",
+			})
+			return
+		}
+
+		wg.Add(1)
+		go uploadDocument(mDocs.File, mDocs.Pancard, strconv.FormatUint(mDocs.LeadID, 10))
+		Response.Status = 1
+	case 3: // Collection documents from Collection Table
+		docsCollection, err := models.GetCollectionWithLeadDetailsByID(app.Conn, request.DocId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+
+		for _, doc := range docsCollection {
+			wg.Add(1)
+			objectNameInBucket, _ := doc["docs"].(string)
+			panCard, _ := doc["pancard"].(string)
+			ID, _ := doc["lead_id"].(uint64)
+			go uploadDocument(objectNameInBucket, panCard, strconv.FormatUint(ID, 10))
+		}
+		Response.Status = 1
+	case 4: // eSign files from CAM
+		LeadID := request.DocId
+		docsData, err := models.GetLeadsByLeadId(app.Conn, LeadID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+
+		camData, err := models.GetCAMByLeadId(app.Conn, LeadID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+		objectNameInBucket := camData.CamSanctionLetterEsginFileName
+
+		wg.Add(1)
+		go uploadDocument(objectNameInBucket, docsData.Pancard, strconv.FormatUint(LeadID, 10))
+		Response.Status = 1
+	default: // If the document type is not 1, 2 or 3
+		Response.Status = 0
+		Response.Message = "Invalid document type"
+	}
+
+	wg.Wait() // Wait for all goroutines to finish
+	c.JSON(http.StatusOK, Response)
+}
+
+// DownloadDocs godoc
+// @Summary Download Docs
+// @Schemes
+// @Description Download Docs to S3 Bucket
+// @Tags Docs
+// @Accept json
+// @Produce json
+// @Param body body schema.Request true "Request"
+// @Success 200 {string} string "ok"
+// @Router /download [post]
+func (app *App) DownloadDocs(c *gin.Context) {
+	var request schema.Request
+	// Bind the request body to the struct
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"Status":  0,
+			"Message": "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	docId := request.DocId
+	var objectNameInBucket string
+	var downloadPath string
+	if downloadPath == "" {
+		downloadPath = configuration.GlobalConfig.Local.TempDocPath
+	}
+
+	switch request.DocumentType {
+	case 1: // Normal documents
+		mDocs, err := models.GetDocsByDocId(app.Conn, docId) // Get documents from DB
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+		objectNameInBucket = mDocs.Pancard + "/" + strconv.FormatUint(mDocs.LeadID, 10) + "/" + mDocs.File
+	case 2: // Collection documents from Collection Table
+		docsCollection, err := models.GetCollectionWithLeadDetailsByID(app.Conn, docId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+
+		file_name, _ := docsCollection[0]["docs"].(string)
+		panCard, _ := docsCollection[0]["pancard"].(string)
+		ID, _ := docsCollection[0]["lead_id"].(uint64)
+
+		objectNameInBucket = panCard + "/" + strconv.FormatUint(ID, 10) + "/" + file_name
+
+	case 3: // eSign files from CAM
+		docsData, err := models.GetLeadsByLeadId(app.Conn, docId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+		camData, err := models.GetCAMByLeadId(app.Conn, docId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"Status":  0,
+				"Message": "Error getting documents from DB: " + err.Error(),
+			})
+			return
+		}
+		objectNameInBucket = docsData.Pancard + "/" + strconv.FormatUint(docId, 10) + "/" + camData.CamSanctionLetterEsginFileName
+	default: // If the document type is not 1, 2 or 3
+		objectNameInBucket = request.ObjectNameInBucket // objectNameInBucket in the bucket (PanCard/LeadID/FileName)
+		downloadPath = request.DownloadPath
+	}
+
+	// Perform the download operation
+	err := integrations.DownloadDocument(objectNameInBucket, downloadPath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"Status":  1,
+			"Message": "Error downloading document: " + err.Error(),
+		})
+		return
+	}
+
+	// Respond with success message
+	c.JSON(http.StatusOK, gin.H{
+		"Status":  1,
+		"Message": "Document downloaded successfully",
+	})
+}

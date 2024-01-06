@@ -1,0 +1,138 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/docs-upload": {
+            "post": {
+                "description": "Upload Docs to S3 Bucket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Docs"
+                ],
+                "summary": "Upload Docs",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/download": {
+            "post": {
+                "description": "Download Docs to S3 Bucket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Docs"
+                ],
+                "summary": "Download Docs",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/lead": {
+            "post": {
+                "description": "insert lead",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Lead"
+                ],
+                "summary": "insert lead",
+                "parameters": [
+                    {
+                        "description": "Lead",
+                        "name": "Lead",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schema.Lead"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "schema.Lead": {
+            "type": "object"
+        },
+        "schema.Request": {
+            "type": "object",
+            "required": [
+                "document_type"
+            ],
+            "properties": {
+                "doc_id": {
+                    "type": "integer"
+                },
+                "document_type": {
+                    "type": "integer"
+                },
+                "download_path": {
+                    "type": "string"
+                },
+                "object_name": {
+                    "type": "string"
+                },
+                "pancard": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

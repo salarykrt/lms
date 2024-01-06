@@ -1,0 +1,21 @@
+[database]
+  server = "localhost"
+  port = 3306
+  username = "user"
+  password = "password"
+  dbname = "prod_db"
+
+[server]
+  address = "127.0.0.1"
+  port = 8080
+
+[s3bucket]
+  access_key=""
+  secret_key=""
+  region="ap-south-1"
+  bucket=""
+  storage_class="INTELLIGENT_TIERING"
+
+[local]
+  base_url = "http://localhost:8080/"
+  temp_doc_path = ""

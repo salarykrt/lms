@@ -1,0 +1,88 @@
+definitions:
+  schema.Lead:
+    type: object
+  schema.Request:
+    properties:
+      doc_id:
+        type: integer
+      document_type:
+        type: integer
+      download_path:
+        type: string
+      object_name:
+        type: string
+      pancard:
+        type: string
+    required:
+    - document_type
+    type: object
+info:
+  contact: {}
+paths:
+  /docs-upload:
+    post:
+      consumes:
+      - application/json
+      description: Upload Docs to S3 Bucket
+      parameters:
+      - description: Request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/schema.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Upload Docs
+      tags:
+      - Docs
+  /download:
+    post:
+      consumes:
+      - application/json
+      description: Download Docs to S3 Bucket
+      parameters:
+      - description: Request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/schema.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Download Docs
+      tags:
+      - Docs
+  /lead:
+    post:
+      consumes:
+      - application/json
+      description: insert lead
+      parameters:
+      - description: Lead
+        in: body
+        name: Lead
+        required: true
+        schema:
+          $ref: '#/definitions/schema.Lead'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: insert lead
+      tags:
+      - Lead
+swagger: "2.0"

@@ -1,0 +1,37 @@
+0. Do the same thing as lead_source to all enums
+1. Add a openapi endpoint to test and document the API
+    - Add an example
+    - Define a return type for the endpoint
+2. Write a mock insert to DB function
+
+
+
+# TODO for application
+1. Add extra params to lead insert
+{
+    "loan_amount": "50000",
+    "purpose": "WEDDINGS",
+    "company_id": 1,
+    "monthly_income": "100000",
+    "obligations": "",
+    "first_name": "Sunil Kumar",
+    "mobile": "9988774455",
+    "pan": "TESPA3213E",
+    "email_personal": "suniltest123@gmail.com",
+    "dob": "1998-02-12",
+    "state_id": "17",
+    "city": "47",
+    "gender": "Male",
+    "pin": "580023",
+    "source": "Website SK",
+    "lead_data_source_id": 1,
+    "utm_source": "ORGANIC",
+    "utm_campaign": "ORGANIC"
+} - also check if lead applied in the last 7 days -
+1.1 Check the types of the models, gorm column name, create enum types, remove primary key, add foreign key
+2. Insert to 2 other tables in lead insert - lead_customer and customer_employment
+2.1 Verify OTP - new handler - also generate loan quote
+3. Create a new endpoint to insert customer banking information
+4. Create a new endpoint to insert customer references
+5. Create a new endpoint to insert customer documents
+6. BG process - Verify email (3rd party API), send welcome message in WhatsApp, SMS, Email

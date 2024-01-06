@@ -1,0 +1,19 @@
+{
+  "loan_amount": 10000,
+  "name": "John Doe",
+  "gender": "Male",
+  "date_of_birth": "1980-01-01",
+  "pan_card": "ABCDE1234F",
+  "mobile": "8547458402",
+  "alternate_mobile": "8547529087",
+  "obligations": 10,
+  "email_personal": "johndoe@example.com",
+  "email_office": "johndoe@office.com",
+  "source": "Website FD",
+  "source_id": 1,
+  "coordinates": "20.5937,78.9629",
+  "ip": "192.168.0.1",
+  "state_id": 10,
+  "city_id": 157,
+  "pincode": "400001"
+}

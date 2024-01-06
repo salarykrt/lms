@@ -1,0 +1,61 @@
+package handlers
+
+import (
+	"log/slog"
+	"net/http"
+	"salarykart/models"
+	"salarykart/schema"
+
+	"github.com/gin-gonic/gin"
+)
+
+// InsertLead godoc
+// @Summary insert lead
+// @Schemes
+// @Description insert lead
+// @Tags Lead
+// @Accept json
+// @Produce json
+// @Param Lead body schema.Lead true "Lead"
+// @Success 200 {string} string "ok"
+// @Router /lead [post]
+func (app *App) InsertLead(c *gin.Context) {
+	var lead schema.Lead
+	err := c.BindJSON(&lead)
+	//TODO: return the error to the client, esp the validation ones
+	if err != nil {
+		slog.Error("Failed to bind the lead", slog.String("err", err.Error()))
+		setError(c, err)
+		return
+	}
+
+	//TODO: validate that the lead has not applied in the last 7 days
+
+	mLead := models.NewLeadFromSchema(lead)
+	err = mLead.Insert(app.Conn)
+	if err != nil {
+		slog.Error("Failed to insert the lead", err)
+		return
+	}
+
+	// TODO : use the ID and remove these fields
+	leadCustomer := models.NewLeadCustomerFromSchema(lead, mLead.LeadId)
+	err = leadCustomer.Insert(app.Conn)
+	if err != nil {
+		slog.Error("Failed to insert the lead_customer", err)
+		return
+	}
+
+	customerEmployment := models.NewCustomerEmploymentFromLead(lead, mLead.LeadId)
+	err = customerEmployment.Insert(app.Conn)
+	if err != nil {
+		slog.Error("Failed to insert the customer_employment", err)
+		return
+	}
+
+	//TODO: return the error to the client, esp the validation ones
+	c.JSON(http.StatusOK, gin.H{
+		// "lead_id": mLead.ID,
+		"message": "Lead inserted successfully",
+	})
+}
